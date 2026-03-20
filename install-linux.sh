@@ -596,24 +596,52 @@ configure_claude_proxy() {
     mkdir -p "${HOME}/.claude"
     
     local bashrc="${HOME}/.bashrc"
+    local master_key=$(grep "^MASTER_KEY=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2)
+    [ -z "$master_key" ] && master_key="sk-free-proxy"
     
-    # Fix PATH para ~/.local/bin (onde o Claude Code é instalado)
+    # Fix PATH para ~/.local/bin
     if ! grep -q 'HOME/.local/bin' "$bashrc" 2>/dev/null; then
         echo "" >> "$bashrc"
         echo "# Claude Code - PATH" >> "$bashrc"
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$bashrc"
     fi
     
-    # Proxy local
+    # Variáveis do proxy
     if ! grep -q "ANTHROPIC_BASE_URL" "$bashrc" 2>/dev/null; then
         echo "" >> "$bashrc"
         echo "# Claude Free - Proxy local" >> "$bashrc"
         echo "export ANTHROPIC_BASE_URL=http://localhost:${PROXY_PORT}" >> "$bashrc"
+        echo "export ANTHROPIC_AUTH_TOKEN=${master_key}" >> "$bashrc"
+        echo 'export ANTHROPIC_API_KEY=""' >> "$bashrc"
     fi
     
-    # Aplicar imediatamente na sessão atual
+    # Aplicar imediatamente
     export PATH="$HOME/.local/bin:$PATH"
     export ANTHROPIC_BASE_URL="http://localhost:${PROXY_PORT}"
+    export ANTHROPIC_AUTH_TOKEN="${master_key}"
+    export ANTHROPIC_API_KEY=""
+    
+    # Criar settings.json com proxy configurado
+    cat > "${HOME}/.claude/settings.json" << EOF
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://localhost:${PROXY_PORT}",
+    "ANTHROPIC_AUTH_TOKEN": "${master_key}",
+    "ANTHROPIC_API_KEY": ""
+  }
+}
+EOF
+    
+    # Criar ~/.claude.json para pular tela de login no primeiro uso
+    # (bug conhecido no Claude Code 2.0.65+: fresh install ignora settings.json)
+    if [ ! -f "${HOME}/.claude.json" ]; then
+        cat > "${HOME}/.claude.json" << EOF
+{
+  "hasCompletedOnboarding": true,
+  "primaryApiKeySource": "bedrock"
+}
+EOF
+    fi
     
     log_success "Claude Code configurado para usar proxy na porta ${PROXY_PORT}!"
 }
