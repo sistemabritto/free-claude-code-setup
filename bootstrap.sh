@@ -53,31 +53,45 @@ case "$OS" in
         echo ""
         echo "     irm https://raw.githubusercontent.com/sistemabritto/free-claude-code-setup/main/install-windows.ps1 | iex"
         echo ""
-        echo "  Ou baixe e execute manualmente:"
-        echo "  https://github.com/sistemabritto/free-claude-code-setup"
-        echo ""
         exit 0
         ;;
     *)
         echo -e "${RED}✗ Sistema não suportado: $OS${NC}"
-        echo "  Sistemas suportados: Linux, macOS, Windows"
         exit 1
         ;;
 esac
+
+# =============================================================================
+# AUTO-INSTALAR curl e git no Linux antes de qualquer coisa
+# =============================================================================
+if [ "$OS" = "Linux" ] || [[ "$OS" == Linux* ]]; then
+    MISSING=()
+    command -v curl &>/dev/null || MISSING+=("curl")
+    command -v git  &>/dev/null || MISSING+=("git")
+
+    if [ ${#MISSING[@]} -gt 0 ]; then
+        echo ""
+        echo -e "${CYAN}[0/3]${NC} Instalando dependências básicas: ${MISSING[*]}"
+        sudo apt-get update -qq 2>/dev/null || true
+        sudo apt-get install -y "${MISSING[@]}" 2>/dev/null || \
+        sudo yum install -y "${MISSING[@]}" 2>/dev/null || \
+        sudo dnf install -y "${MISSING[@]}" 2>/dev/null || {
+            echo -e "${RED}✗ Não foi possível instalar ${MISSING[*]} automaticamente.${NC}"
+            echo "  Instale manualmente: sudo apt install ${MISSING[*]}"
+            exit 1
+        }
+        echo -e "${GREEN}✓ ${MISSING[*]} instalados${NC}"
+    fi
+fi
 
 # Baixar repositório
 echo ""
 echo -e "${CYAN}[1/3]${NC} Baixando Setup Claude Free..."
 
-if command -v git &>/dev/null; then
-    if git clone --depth 1 "$REPO_URL" "$TEMP_DIR/repo" 2>/dev/null; then
-        echo -e "${GREEN}✓ Repositório baixado${NC}"
-    else
-        echo -e "${RED}✗ Erro ao clonar repositório${NC}"
-        exit 1
-    fi
+if git clone --depth 1 "$REPO_URL" "$TEMP_DIR/repo" 2>/dev/null; then
+    echo -e "${GREEN}✓ Repositório baixado${NC}"
 else
-    echo -e "${RED}✗ Git não encontrado. Instale git primeiro.${NC}"
+    echo -e "${RED}✗ Erro ao clonar repositório${NC}"
     exit 1
 fi
 
@@ -88,7 +102,6 @@ mkdir -p "$INSTALL_DIR/proxy"
 mkdir -p "$INSTALL_DIR/config"
 mkdir -p "$INSTALL_DIR/logs"
 
-# Copiar arquivos principais
 for file in proxy_core.py config_manager.py models_config.py requirements.txt; do
     if [ -f "$TEMP_DIR/repo/$file" ]; then
         cp "$TEMP_DIR/repo/$file" "$INSTALL_DIR/proxy/"
@@ -104,8 +117,7 @@ cd "$TEMP_DIR/repo"
 
 if [ -f "$SCRIPT_NAME" ]; then
     chmod +x "$SCRIPT_NAME" 2>/dev/null
-    
-    # Para macOS, executar com zsh
+
     if [ "$OS" = "Darwin" ]; then
         exec zsh "$SCRIPT_NAME"
     else
@@ -113,7 +125,6 @@ if [ -f "$SCRIPT_NAME" ]; then
     fi
 else
     echo -e "${RED}✗ Instalador $SCRIPT_NAME não encontrado${NC}"
-    echo "  Arquivos disponíveis:"
     ls -la "$TEMP_DIR/repo/"
     exit 1
 fi
