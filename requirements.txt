@@ -1,0 +1,20 @@
+# =============================================================================
+# Dependências do Claude Free Proxy
+# Versão: 1.0.0
+# =============================================================================
+
+# Framework Web
+flask>=3.0.0
+
+# Cliente HTTP
+requests>=2.31.0
+
+# Gerenciamento de variáveis de ambiente
+python-dotenv>=1.0.0
+
+# Servidor WSGI de produção
+gunicorn>=21.0.0
+
+# Opcional: Suporte a asyncio
+# aiohttp>=3.9.0
+# quart>=0.19.0

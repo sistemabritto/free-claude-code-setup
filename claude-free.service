@@ -1,0 +1,27 @@
+[Unit]
+Description=Claude Free Proxy - Servidor Proxy para APIs AI
+Documentation=https://github.com/sistemabritto/setup-claude-free
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.claude-free/proxy/proxy_core.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Variáveis de ambiente
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTHONIOENCODING=utf-8"
+
+# Segurança
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.claude-free
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

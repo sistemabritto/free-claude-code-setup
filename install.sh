@@ -1,0 +1,646 @@
+#!/bin/bash
+#===============================================================================
+# Setup Claude Free - Instalador TUI para Ambiente AI Gratuito
+# Repositório: sistemabritto/setup-claude-free
+# Versão: 2.0.0 - Atualizado com melhores modelos gratuitos 2025
+#===============================================================================
+
+set -e
+
+# Cores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m' # No Color
+
+# Diretórios
+INSTALL_DIR="${HOME}/.claude-free"
+CONFIG_DIR="${INSTALL_DIR}/config"
+LOGS_DIR="${INSTALL_DIR}/logs"
+ENV_FILE="${CONFIG_DIR}/.env"
+PROXY_PORT=8323
+
+# =============================================================================
+# MODELOS E PROVEDORES (ATUALIZADO 2025)
+# =============================================================================
+
+# Categorias: FREE (100% grátis), LOW_COST (barato), PAID (precisa de créditos)
+
+declare -A PROVIDER_INFO=(
+    ["groq"]="Groq|100% GRÁTIS|Inferência ULTRA-RÁPIDA (~460 tok/s)|https://console.groq.com/keys|gsk_"
+    ["openrouter"]="OpenRouter|FREE + Low-Cost|Vários modelos gratuitos|https://openrouter.ai/keys|sk-or_"
+    ["nvidia"]="NVIDIA NIM|FREE Rate-Limited|182+ modelos disponíveis|https://build.nvidia.com/|nvapi-"
+    ["zai"]="Z.AI (GLM)|Free Limitado|Excelente para código|https://z.ai/|glm-"
+)
+
+# Modelos GRATUITOS por provedor
+declare -A FREE_MODELS=(
+    # GROQ - 100% GRÁTIS (Melhor velocidade)
+    ["groq"]="llama-4-scout-17b-16e|llama-4-maverick-17b-128e|llama-3.3-70b-versatile|llama-3.1-8b-instant|deepseek-r1-distill-llama-70b"
+    
+    # OPENROUTER - Vários modelos FREE
+    ["openrouter"]="qwen/qwen3-coder:free|deepseek/deepseek-chat-v3-0324:free|deepseek/deepseek-r1:free|meta-llama/llama-4-scout:free|z-ai/glm-4.5-air:free|google/gemini-2.0-flash-exp:free"
+    
+    # NVIDIA NIM - Rate limited FREE
+    ["nvidia"]="minimaxai/minimax-m2.5|nvidia/nemotron-4-340b-instruct|meta/llama-3.1-405b-instruct"
+    
+    # Z.AI - Free limitado
+    ["zai"]="glm-4.5-air"
+)
+
+# Nomes amigáveis dos modelos
+declare -A MODEL_NAMES=(
+    # GROQ
+    ["llama-4-scout-17b-16e"]="Llama 4 Scout 17B (⭐ CÓDIGO)"
+    ["llama-4-maverick-17b-128e"]="Llama 4 Maverick 17B"
+    ["llama-3.3-70b-versatile"]="Llama 3.3 70B Versatile"
+    ["llama-3.1-8b-instant"]="Llama 3.1 8B Instant"
+    ["deepseek-r1-distill-llama-70b"]="DeepSeek R1 Distill 70B"
+    
+    # OPENROUTER
+    ["qwen/qwen3-coder:free"]="Qwen3 Coder 480B (🏆 TOP CÓDIGO)"
+    ["deepseek/deepseek-chat-v3-0324:free"]="DeepSeek V3 Chat"
+    ["deepseek/deepseek-r1:free"]="DeepSeek R1 Reasoning"
+    ["meta-llama/llama-4-scout:free"]="Llama 4 Scout"
+    ["z-ai/glm-4.5-air:free"]="GLM 4.5 Air"
+    ["google/gemini-2.0-flash-exp:free"]="Gemini 2.0 Flash"
+    
+    # NVIDIA
+    ["minimaxai/minimax-m2.5"]="MiniMax M2.5 230B (⭐ CÓDIGO)"
+    ["nvidia/nemotron-4-340b-instruct"]="Nemotron 4 340B"
+    ["meta/llama-3.1-405b-instruct"]="Llama 3.1 405B"
+    
+    # Z.AI
+    ["glm-4.5-air"]="GLM 4.5 Air"
+)
+
+# Modelos recomendados para CÓDIGO
+declare -A CODING_MODELS=(
+    ["qwen/qwen3-coder:free"]="OpenRouter|480B params, 262K context"
+    ["llama-4-scout-17b-16e"]="Groq|~460 tok/s, multimodal"
+    ["minimaxai/minimax-m2.5"]="NVIDIA|230B, especializado código"
+    ["deepseek/deepseek-r1:free"]="OpenRouter|Reasoning + código"
+)
+
+# Base URLs
+declare -A PROVIDER_BASE_URLS=(
+    ["groq"]="https://api.groq.com/openai/v1"
+    ["openrouter"]="https://openrouter.ai/api/v1"
+    ["nvidia"]="https://integrate.api.nvidia.com/v1"
+    ["zai"]="https://open.bigmodel.cn/api/paas/v4"
+)
+
+# API Key env names
+declare -A API_KEY_NAMES=(
+    ["groq"]="GROQ_API_KEY"
+    ["openrouter"]="OPENROUTER_API_KEY"
+    ["nvidia"]="NVIDIA_API_KEY"
+    ["zai"]="ZAI_API_KEY"
+)
+
+# =============================================================================
+# FUNÇÕES DE LOG
+# =============================================================================
+
+log_info() {
+    echo -e "${CYAN}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_highlight() {
+    echo -e "${MAGENTA}★${NC} $1"
+}
+
+# =============================================================================
+# VERIFICAÇÕES
+# =============================================================================
+
+check_dependencies() {
+    local missing_deps=()
+    
+    if ! command -v whiptail &> /dev/null; then
+        missing_deps+=("whiptail")
+    fi
+    
+    if ! command -v python3 &> /dev/null; then
+        missing_deps+=("python3")
+    fi
+    
+    if ! command -v pip3 &> /dev/null && ! command -v pip &> /dev/null; then
+        missing_deps+=("python3-pip")
+    fi
+    
+    if ! command -v git &> /dev/null; then
+        missing_deps+=("git")
+    fi
+    
+    if ! command -v curl &> /dev/null; then
+        missing_deps+=("curl")
+    fi
+    
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        whiptail --title "Dependências Faltando" \
+            --msgbox "As seguintes dependências estão faltando:\n\n${missing_deps[*]}\n\nPor favor, instale-as primeiro:\n\nsudo apt install ${missing_deps[*]}" \
+            15 60
+        exit 1
+    fi
+}
+
+# =============================================================================
+# CRIAÇÃO DE ESTRUTURA
+# =============================================================================
+
+create_directories() {
+    log_info "Criando estrutura de diretórios..."
+    mkdir -p "${INSTALL_DIR}"
+    mkdir -p "${CONFIG_DIR}"
+    mkdir -p "${LOGS_DIR}"
+    mkdir -p "${INSTALL_DIR}/proxy"
+    log_success "Diretórios criados em ${INSTALL_DIR}"
+}
+
+create_env_file() {
+    if [ ! -f "${ENV_FILE}" ]; then
+        log_info "Criando arquivo de configuração inicial..."
+        cat > "${ENV_FILE}" << 'EOF'
+# =============================================================================
+# Configuração do Setup Claude Free v2.0
+# Atualizado: 2025 - Melhores modelos gratuitos
+# =============================================================================
+
+# Provedor ativo: groq, openrouter, nvidia, zai
+ACTIVE_PROVIDER=groq
+
+# Modelo ativo (recomendado para código: llama-4-scout-17b-16e)
+ACTIVE_MODEL=llama-4-scout-17b-16e
+
+# API Keys (configure conforme necessário)
+GROQ_API_KEY=
+OPENROUTER_API_KEY=
+NVIDIA_API_KEY=
+ZAI_API_KEY=
+
+# Configuração do Proxy
+PROXY_PORT=8323
+MASTER_KEY=
+
+# Hot Reload (segundos)
+CONFIG_RELOAD_INTERVAL=10
+
+# Logs
+LOG_LEVEL=INFO
+
+# Categoria de modelos: free, low_cost, paid
+MODEL_TIER=free
+EOF
+        log_success "Arquivo .env criado em ${ENV_FILE}"
+    else
+        log_info "Arquivo .env já existe, mantendo configurações atuais"
+    fi
+}
+
+# =============================================================================
+# INTERFACE TUI
+# =============================================================================
+
+show_welcome() {
+    whiptail --title "Setup Claude Free v2.0 - Ambiente AI Gratuito" \
+        --msgbox "\
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║        🤖 Setup Claude Free - Ambiente AI Gratuito           ║
+║                     Versão 2.0 - 2025                        ║
+║                                                              ║
+║  MELHORES MODELOS GRATUITOS PARA CÓDIGO:                    ║
+║                                                              ║
+║  🏆 Qwen3 Coder 480B (OpenRouter) - TOP código              ║
+║  ⭐ Llama 4 Scout (Groq) - Ultra-rápido ~460 tok/s          ║
+║  ⭐ MiniMax M2.5 230B (NVIDIA) - Especialista código        ║
+║  ⭐ DeepSeek R1 (OpenRouter) - Reasoning avançado           ║
+║                                                              ║
+║  Recursos:                                                   ║
+║  • Proxy local com tradução Anthropic ↔ OpenAI              ║
+║  • Painel web de administração                              ║
+║  • Gerenciamento via terminal (cc-config)                   ║
+║  • Hot reload de configuração                               ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝\
+
+Pressione OK para continuar..." \
+        26 70
+}
+
+show_provider_info() {
+    local provider=$1
+    IFS='|' read -r name tier desc url prefix <<< "${PROVIDER_INFO[$provider]}"
+    
+    whiptail --title "Provedor: $name" \
+        --msgbox "\
+╔══════════════════════════════════════════════════════════════╗
+║  $name
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Tipo: $tier
+║  $desc
+║                                                              ║
+║  Obter API Key: $url
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝\
+
+Pressione OK para configurar..." \
+        15 70
+}
+
+configure_api_keys() {
+    local providers=("groq" "openrouter" "nvidia" "zai")
+    local selected_providers=()
+    
+    while true; do
+        # Criar lista de checkboxes com status
+        local checklist_items=()
+        
+        for provider in "${providers[@]}"; do
+            IFS='|' read -r name tier desc url prefix <<< "${PROVIDER_INFO[$provider]}"
+            local key_name="${API_KEY_NAMES[$provider]}"
+            local status="off"
+            
+            # Verificar se já configurado
+            if grep -q "^${key_name}=.\+" "${ENV_FILE}" 2>/dev/null; then
+                status="on"
+            fi
+            
+            checklist_items+=("$provider" "$name ($tier)" "$status")
+        done
+        
+        local selections
+        selections=$(whiptail --title "Configurar Provedores" \
+            --checklist "\nSelecione os provedores para configurar:\nMarcados = já configurados\n\nUse ESPAÇO para marcar, ENTER para confirmar:" \
+            18 65 4 "${checklist_items[@]}" \
+            3>&1 1>&2 2>&3)
+        
+        local exit_status=$?
+        if [ $exit_status -ne 0 ]; then
+            break
+        fi
+        
+        # Processar seleções
+        IFS=' ' read -ra selected_providers <<< "$selections"
+        
+        if [ ${#selected_providers[@]} -eq 0 ]; then
+            if whiptail --title "Nenhum Provedor Selecionado" \
+                --yesno "Nenhum provedor selecionado. Deseja sair?" 10 50; then
+                break
+            fi
+            continue
+        fi
+        
+        # Para cada provedor selecionado, pedir a chave
+        for provider in "${selected_providers[@]}"; do
+            provider=$(echo "$provider" | tr -d '"')
+            
+            # Mostrar info do provedor
+            show_provider_info "$provider"
+            
+            IFS='|' read -r name tier desc url prefix <<< "${PROVIDER_INFO[$provider]}"
+            local key_name="${API_KEY_NAMES[$provider]}"
+            local current_key=""
+            
+            # Obter chave atual se existir
+            current_key=$(grep "^${key_name}=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2-)
+            
+            local api_key
+            api_key=$(whiptail --title "API Key - $name" \
+                --passwordbox "\nDigite sua API Key para $name:\n\nPrefixo esperado: $prefix\n\nA chave será armazenada em:\n${ENV_FILE}" \
+                14 65 "${current_key}" \
+                3>&1 1>&2 2>&3)
+            
+            if [ $? -eq 0 ] && [ -n "$api_key" ]; then
+                # Atualizar ou adicionar a chave no .env
+                if grep -q "^${key_name}=" "${ENV_FILE}"; then
+                    sed -i "s|^${key_name}=.*|${key_name}=${api_key}|" "${ENV_FILE}"
+                else
+                    echo "${key_name}=${api_key}" >> "${ENV_FILE}"
+                fi
+                log_success "Chave $name configurada!"
+            fi
+        done
+        
+        if ! whiptail --title "Continuar?" \
+            --yesno "Provedores configurados: ${#selected_providers[@]}\n\nDeseja configurar mais algum?" 10 50; then
+            break
+        fi
+    done
+}
+
+select_active_model() {
+    # Verificar quais provedores têm chaves configuradas
+    local available_providers=()
+    
+    for provider in groq openrouter nvidia zai; do
+        local key_name="${API_KEY_NAMES[$provider]}"
+        if grep -q "^${key_name}=.\+" "${ENV_FILE}" 2>/dev/null; then
+            available_providers+=("$provider")
+        fi
+    done
+    
+    if [ ${#available_providers[@]} -eq 0 ]; then
+        whiptail --title "Nenhum Provedor Configurado" \
+            --msgbox "Nenhum provedor possui API Key configurada.\nConfigure pelo menos um provedor primeiro." 12 50
+        return 1
+    fi
+    
+    # Criar lista de modelos disponíveis
+    local model_options=()
+    local current_model=$(grep "^ACTIVE_MODEL=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2)
+    
+    # Adicionar modelos recomendados primeiro
+    model_options+=("recommend" "🏆 RECOMENDADO PARA CÓDIGO (melhor disponível)")
+    
+    for provider in "${available_providers[@]}"; do
+        IFS='|' read -ra models <<< "${FREE_MODELS[$provider]}"
+        IFS='|' read -r name tier desc url prefix <<< "${PROVIDER_INFO[$provider]}"
+        
+        for model in "${models[@]}"; do
+            local display_name="${MODEL_NAMES[$model]:-$model}"
+            local selected=""
+            
+            if [ "$model" == "$current_model" ]; then
+                selected=" ✓"
+            fi
+            
+            model_options+=("$provider:$model" "[$name] $display_name$selected")
+        done
+    done
+    
+    local selected
+    selected=$(whiptail --title "Selecionar Modelo Ativo" \
+        --menu "\nEscolha o modelo padrão para suas requisições:\n" \
+        25 80 15 "${model_options[@]}" \
+        3>&1 1>&2 2>&3)
+    
+    if [ $? -eq 0 ] && [ -n "$selected" ]; then
+        if [ "$selected" == "recommend" ]; then
+            # Selecionar melhor modelo disponível para código
+            select_best_coding_model
+        else
+            IFS=':' read -r provider model <<< "$selected"
+            
+            sed -i "s|^ACTIVE_PROVIDER=.*|ACTIVE_PROVIDER=${provider}|" "${ENV_FILE}"
+            sed -i "s|^ACTIVE_MODEL=.*|ACTIVE_MODEL=${model}|" "${ENV_FILE}"
+            
+            local model_name="${MODEL_NAMES[$model]:-$model}"
+            log_success "Modelo ativo: $model_name"
+        fi
+    fi
+}
+
+select_best_coding_model() {
+    # Prioridade de melhores modelos para código
+    local priority_models=(
+        "openrouter:qwen/qwen3-coder:free"
+        "groq:llama-4-scout-17b-16e"
+        "nvidia:minimaxai/minimax-m2.5"
+        "openrouter:deepseek/deepseek-r1:free"
+    )
+    
+    for model_entry in "${priority_models[@]}"; do
+        IFS=':' read -r provider model <<< "$model_entry"
+        local key_name="${API_KEY_NAMES[$provider]}"
+        
+        if grep -q "^${key_name}=.\+" "${ENV_FILE}" 2>/dev/null; then
+            sed -i "s|^ACTIVE_PROVIDER=.*|ACTIVE_PROVIDER=${provider}|" "${ENV_FILE}"
+            sed -i "s|^ACTIVE_MODEL=.*|ACTIVE_MODEL=${model}|" "${ENV_FILE}"
+            
+            local model_name="${MODEL_NAMES[$model]:-$model}"
+            log_success "Modelo recomendado selecionado: $model_name"
+            return 0
+        fi
+    done
+    
+    whiptail --title "Nenhum Modelo Recomendado Disponível" \
+        --msgbox "Configure pelo menos um destes provedores para usar o modelo recomendado:\n\n• OpenRouter (Qwen3 Coder)\n• Groq (Llama 4 Scout)\n• NVIDIA (MiniMax M2.5)" 14 60
+}
+
+configure_master_key() {
+    local master_key
+    master_key=$(whiptail --title "Configurar Master Key" \
+        --passwordbox "\nDefina uma senha para o painel admin web.\n\nDeixe vazio para desabilitar proteção.\n\nPainel: http://localhost:${PROXY_PORT}/admin" \
+        14 60 \
+        3>&1 1>&2 2>&3)
+    
+    if [ $? -eq 0 ]; then
+        if grep -q "^MASTER_KEY=" "${ENV_FILE}"; then
+            sed -i "s|^MASTER_KEY=.*|MASTER_KEY=${master_key}|" "${ENV_FILE}"
+        else
+            echo "MASTER_KEY=${master_key}" >> "${ENV_FILE}"
+        fi
+        log_success "Master Key configurada!"
+    fi
+}
+
+install_antigravity() {
+    if whiptail --title "Instalar Antigravity (IDE Visual)" \
+        --yesno "\nDeseja instalar o Antigravity (IDE Visualizador)?\n\nO Antigravity é um IDE visual para desenvolvedores AI.\n\n(Recomendado)" 14 60; then
+        
+        log_info "Clonando repositório Antigravity..."
+        
+        if [ -d "${HOME}/antigravity" ]; then
+            log_warning "Diretório já existe. Atualizando..."
+            cd "${HOME}/antigravity" && git pull
+        else
+            git clone https://github.com/sistemabritto/antigravity.git "${HOME}/antigravity"
+        fi
+        
+        if [ -f "${HOME}/antigravity/install.sh" ]; then
+            log_info "Executando instalador do Antigravity..."
+            cd "${HOME}/antigravity" && chmod +x install.sh && ./install.sh
+        fi
+        
+        log_success "Antigravity instalado!"
+    fi
+}
+
+# =============================================================================
+# INSTALAÇÃO DOS ARQUIVOS
+# =============================================================================
+
+install_proxy_files() {
+    log_info "Instalando arquivos do proxy..."
+    
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # Copiar arquivos principais
+    for file in proxy_core.py config_manager.py models_config.py requirements.txt; do
+        if [ -f "${script_dir}/${file}" ]; then
+            cp "${script_dir}/${file}" "${INSTALL_DIR}/proxy/"
+        fi
+    done
+    
+    # Criar requirements se não existir
+    if [ ! -f "${INSTALL_DIR}/proxy/requirements.txt" ]; then
+        cat > "${INSTALL_DIR}/proxy/requirements.txt" << 'EOF'
+flask>=3.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+gunicorn>=21.0.0
+EOF
+    fi
+    
+    log_success "Arquivos do proxy instalados"
+}
+
+install_python_deps() {
+    log_info "Instalando dependências Python..."
+    pip3 install -q flask requests python-dotenv gunicorn 2>/dev/null || \
+    pip install -q flask requests python-dotenv gunicorn 2>/dev/null
+    log_success "Dependências Python instaladas"
+}
+
+create_aliases() {
+    log_info "Criando aliases..."
+    
+    local bashrc="${HOME}/.bashrc"
+    local zshrc="${HOME}/.zshrc"
+    
+    local alias_block="
+# Claude Free - Comandos
+alias cc-config='python3 ${INSTALL_DIR}/proxy/config_manager.py'
+alias cc-start='python3 ${INSTALL_DIR}/proxy/proxy_core.py'
+alias cc-status='curl -s http://localhost:8323/health | python3 -m json.tool'
+alias cc-models='python3 ${INSTALL_DIR}/proxy/models_config.py'
+"
+    
+    for rc in "$bashrc" "$zshrc"; do
+        if [ -f "$rc" ] && ! grep -q "cc-config" "$rc" 2>/dev/null; then
+            echo "$alias_block" >> "$rc"
+        fi
+    done
+    
+    log_success "Aliases criados (reinicie o terminal)"
+}
+
+create_systemd_service() {
+    log_info "Criando serviço systemd..."
+    
+    mkdir -p "${HOME}/.config/systemd/user"
+    
+    cat > "${HOME}/.config/systemd/user/claude-free.service" << EOF
+[Unit]
+Description=Claude Free Proxy
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 ${INSTALL_DIR}/proxy/proxy_core.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
+EOF
+    
+    systemctl --user daemon-reload 2>/dev/null || true
+    log_success "Serviço systemd criado"
+}
+
+# =============================================================================
+# RESUMO FINAL
+# =============================================================================
+
+show_summary() {
+    local configured_providers=()
+    local active_provider=$(grep "^ACTIVE_PROVIDER=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2)
+    local active_model=$(grep "^ACTIVE_MODEL=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2)
+    
+    for provider in groq openrouter nvidia zai; do
+        local key_name="${API_KEY_NAMES[$provider]}"
+        if grep -q "^${key_name}=.\+" "${ENV_FILE}" 2>/dev/null; then
+            IFS='|' read -r name tier desc url prefix <<< "${PROVIDER_INFO[$provider]}"
+            configured_providers+=("$name")
+        fi
+    done
+    
+    local model_name="${MODEL_NAMES[$active_model]:-$active_model}"
+    
+    whiptail --title "✓ Instalação Concluída!" \
+        --msgbox "\
+╔══════════════════════════════════════════════════════════════╗
+║                  ✓ INSTALAÇÃO CONCLUÍDA!                     ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Diretório: ${INSTALL_DIR}
+║  Config:    ${ENV_FILE}
+║                                                              ║
+║  Provedores Configurados: ${configured_providers[*]:-Nenhum}
+║  Modelo Ativo: ${model_name:-Não definido}
+║                                                              ║
+╠══════════════════════════════════════════════════════════════╣
+║                    COMANDOS:                                 ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  cc-config    Menu de configuração                           ║
+║  cc-start     Iniciar o proxy                                ║
+║  cc-status    Verificar status                               ║
+║  cc-models    Ver modelos disponíveis                        ║
+║                                                              ║
+║  Painel Web:  http://localhost:${PROXY_PORT}/admin
+║                                                              ║
+╠══════════════════════════════════════════════════════════════╣
+║                  PRÓXIMOS PASSOS:                            ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  1. Reinicie o terminal: source ~/.bashrc                    ║
+║  2. Inicie o proxy: cc-start                                 ║
+║  3. Configure seu cliente para:                              ║
+║     http://localhost:${PROXY_PORT}/v1/chat/completions
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝\
+
+Pressione OK para finalizar..." \
+        28 70
+}
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+main() {
+    if [ "$EUID" -eq 0 ]; then
+        whiptail --title "Aviso" --msgbox "Execute como usuário normal, não como root." 10 50
+        exit 1
+    fi
+    
+    check_dependencies
+    show_welcome
+    create_directories
+    create_env_file
+    configure_api_keys
+    select_active_model
+    configure_master_key
+    install_antigravity
+    install_proxy_files
+    install_python_deps
+    create_aliases
+    create_systemd_service
+    show_summary
+    
+    log_success "Instalação concluída!"
+    echo -e "${CYAN}Reinicie o terminal e execute 'cc-config' para gerenciar.${NC}"
+}
+
+main "$@"
