@@ -519,7 +519,21 @@ create_aliases() {
     local alias_block="
 # Claude Free - Comandos
 alias cc-config='python3 ${INSTALL_DIR}/proxy/config_manager.py'
-alias cc-start='python3 ${INSTALL_DIR}/proxy/proxy_core.py'
+cc-start() {
+    if curl -s http://localhost:8323/health > /dev/null 2>&1; then
+        echo '✅ Proxy já está rodando em http://localhost:8323'
+        return 0
+    fi
+    pkill -f proxy_core.py 2>/dev/null || true
+    sleep 1
+    nohup python3 ${INSTALL_DIR}/proxy/proxy_core.py > ${INSTALL_DIR}/logs/proxy.log 2>&1 &
+    sleep 2
+    if curl -s http://localhost:8323/health > /dev/null 2>&1; then
+        echo '✅ Proxy rodando em http://localhost:8323'
+    else
+        echo '⚠️  Erro ao iniciar proxy. Veja os logs: cc-logs'
+    fi
+}
 alias cc-status='curl -s http://localhost:8323/health | python3 -m json.tool'
 alias cc-models='python3 ${INSTALL_DIR}/proxy/models_config.py'
 "
@@ -555,7 +569,9 @@ WantedBy=default.target
 EOF
     
     systemctl --user daemon-reload 2>/dev/null || true
-    log_success "Serviço systemd criado"
+    systemctl --user enable claude-free.service 2>/dev/null || true
+    systemctl --user start claude-free.service 2>/dev/null || true
+    log_success "Serviço systemd criado e iniciado"
 }
 
 # =============================================================================
@@ -754,19 +770,27 @@ main() {
     echo ""
     echo -e "${GREEN}════════════════════════════════════════════${NC}"
     
-    # Aplicar PATH e iniciar Claude Code direto
+    # Aplicar PATH
     export PATH="$HOME/.local/bin:$PATH"
     export ANTHROPIC_BASE_URL="http://localhost:${PROXY_PORT}"
     
     echo ""
-    echo -e "${GREEN}  Abrindo Claude Code...${NC}"
+    echo -e "${GREEN}  Abrindo Antigravity...${NC}"
     echo ""
     
-    if command -v claude &>/dev/null; then
+    # Abrir Antigravity se instalado, senão Claude Code
+    if command -v antigravity &>/dev/null; then
+        antigravity . &
+        echo -e "${GREEN}  ✅ Antigravity aberto!${NC}"
+        echo -e "${CYAN}  Proxy: http://localhost:${PROXY_PORT}${NC}"
+    elif command -v claude &>/dev/null; then
+        echo -e "${YELLOW}  Antigravity não encontrado. Abrindo Claude Code...${NC}"
         exec claude
     else
-        echo -e "${YELLOW}  Claude instalado em: ~/.local/bin/claude${NC}"
-        echo -e "${YELLOW}  Rode: source ~/.bashrc && claude${NC}"
+        echo -e "${YELLOW}  Instalação concluída!${NC}"
+        echo -e "${CYAN}  Proxy: http://localhost:${PROXY_PORT}${NC}"
+        echo -e "${CYAN}  Claude Code: source ~/.bashrc && claude${NC}"
+        echo -e "${CYAN}  Antigravity: https://antigravity.dev${NC}"
     fi
 }
 
