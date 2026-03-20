@@ -405,3 +405,62 @@ if __name__ == "__main__":
             print(f"    ID: {model_id}")
             print(f"    {model['name']} | {model.get('context','?')} ctx | {model.get('best_for','')}")
             print()
+
+
+# =============================================================================
+# COMPATIBILIDADE COM proxy_core.py
+# =============================================================================
+
+# Headers por provedor (necessário pelo proxy_core.py)
+PROVIDER_HEADERS = {
+    "groq": lambda k: {
+        "Authorization": f"Bearer {k}",
+        "Content-Type": "application/json"
+    },
+    "openrouter": lambda k: {
+        "Authorization": f"Bearer {k}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://claude-free.local",
+        "X-Title": "Claude Free Proxy"
+    },
+    "nvidia": lambda k: {
+        "Authorization": f"Bearer {k}",
+        "Content-Type": "application/json"
+    },
+    "zai": lambda k: {
+        "Authorization": f"Bearer {k}",
+        "Content-Type": "application/json"
+    },
+}
+
+
+def get_model_info(model_id: str, provider_id: str = None) -> dict:
+    """Retorna info de um modelo específico."""
+    if provider_id and provider_id in PROVIDERS:
+        models = PROVIDERS[provider_id].get("models", {})
+        if model_id in models:
+            return models[model_id]
+    # Busca em todos os provedores
+    for prov in PROVIDERS.values():
+        if model_id in prov.get("models", {}):
+            return prov["models"][model_id]
+    return {}
+
+
+def get_free_models(provider_id: str = None) -> list:
+    """Retorna lista de modelos gratuitos."""
+    result = []
+    providers = {provider_id: PROVIDERS[provider_id]} if provider_id and provider_id in PROVIDERS else PROVIDERS
+    for prov_id, prov in providers.items():
+        for model_id, model in prov.get("models", {}).items():
+            if model.get("tier") == "free":
+                result.append({"provider": prov_id, "model_id": model_id, **model})
+    return result
+
+
+# Recomendações para seleção automática
+RECOMMENDATIONS = {
+    "code": BEST_FREE_FOR_CODE,
+    "reasoning": BEST_FREE_FOR_REASONING,
+    "general": BEST_FREE_GENERAL,
+}
