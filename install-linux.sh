@@ -386,8 +386,8 @@ select_active_model() {
     
     local selected
     selected=$(whiptail --title "Selecionar Modelo Ativo" \
-        --menu "\nEscolha o modelo padrão para suas requisições:\n" \
-        25 80 15 "${model_options[@]}" \
+        --menu "\nEscolha o modelo para suas requisicoes:\n" \
+        25 100 15 "${model_options[@]}" \
         3>&1 1>&2 2>&3)
     
     if [ $? -eq 0 ] && [ -n "$selected" ]; then
@@ -451,25 +451,14 @@ configure_master_key() {
 }
 
 install_antigravity() {
-    if whiptail --title "Instalar Antigravity (IDE Visual)" \
-        --yesno "\nDeseja instalar o Antigravity (IDE Visualizador)?\n\nO Antigravity é um IDE visual para desenvolvedores AI.\n\n(Recomendado)" 14 60; then
-        
-        log_info "Clonando repositório Antigravity..."
-        
-        if [ -d "${HOME}/antigravity" ]; then
-            log_warning "Diretório já existe. Atualizando..."
-            cd "${HOME}/antigravity" && git pull
-        else
-            git clone https://github.com/sistemabritto/antigravity.git "${HOME}/antigravity"
-        fi
-        
-        if [ -f "${HOME}/antigravity/install.sh" ]; then
-            log_info "Executando instalador do Antigravity..."
-            cd "${HOME}/antigravity" && chmod +x install.sh && ./install.sh
-        fi
-        
-        log_success "Antigravity instalado!"
+    # Antigravity é opcional — link para instalação manual
+    if whiptail --title "Antigravity (IDE Visual)" \
+        --yesno "\nDeseja ver instruções para instalar o Antigravity?\n\nO Antigravity é um IDE gratuito para usar com o proxy.\nVocê pode instalar depois se quiser." 14 60; then
+
+        whiptail --title "Antigravity" \
+            --msgbox "\nPara instalar o Antigravity:\n\n  https://antigravity.dev\n\nApós instalar, configure:\n  ANTHROPIC_BASE_URL=http://localhost:8323\n\nO proxy já está rodando nessa porta!" 15 60
     fi
+    log_info "Antigravity: instale quando quiser em https://antigravity.dev"
 }
 
 # =============================================================================
