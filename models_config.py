@@ -1,57 +1,97 @@
 #!/usr/bin/env python3
 """
 Mapeamento de Modelos e Provedores - Setup Claude Free
-Atualizado: 2025 - Melhores modelos para CÓDIGO
+Atualizado: Março 2026
 
-MODELOS TOP PARA CÓDIGO:
-- Qwen3 Coder 480B (OpenRouter FREE) - MELHOR para código
-- Kimi K2 / K2.5 (NVIDIA FREE) - Excelente para código
-- Llama 4 Scout (Groq FREE) - Rápido + código
-- MiniMax M2.5 (NVIDIA FREE) - Especialista código
+LEGENDA DE CORES NO PAINEL:
+  🟢 VERDE  = 100% gratuito (free tier)
+  🟡 AMARELO = Baixo custo (< $0.50/M tokens)
+  🔴 VERMELHO = Pago (> $0.50/M tokens)
+
+MODELOS FREE TOP PARA CÓDIGO (Março 2026):
+  🏆 Qwen3 Coder 480B   (OpenRouter :free) — MELHOR código
+  ⭐ Nemotron 3 Super   (OpenRouter :free) — 120B, 1M context
+  ⚡ Llama 4 Scout      (Groq free tier)   — mais rápido
+  🧠 GPT-OSS 120B       (Groq free tier)   — melhor reasoning
 """
 
-# =============================================================================
-# PROVEDORES E MODELOS - ATUALIZADO 2025
-# =============================================================================
+# Cores para terminal e painel web
+COLOR_FREE = "\033[92m"      # Verde
+COLOR_LOW_COST = "\033[93m"  # Amarelo
+COLOR_PAID = "\033[91m"      # Vermelho
+COLOR_RESET = "\033[0m"
+
+TIER_BADGE = {
+    "free":     "🟢 GRÁTIS",
+    "low_cost": "🟡 BAIXO CUSTO",
+    "paid":     "🔴 PAGO",
+}
 
 PROVIDERS = {
+
     # =========================================================================
-    # GROQ - 100% GRÁTIS (Ultra-rápido)
+    # GROQ — Free tier com rate limits
+    # Todos os modelos abaixo são acessíveis no free tier
+    # Rate limits: ~30 req/min, ~1000 req/dia dependendo do modelo
     # =========================================================================
     "groq": {
         "name": "Groq",
-        "description": "Inferência ULTRA-RÁPIDA via LPU. 100% gratuito, sem rate limits.",
+        "description": "Inferência ULTRA-RÁPIDA via LPU. Free tier disponível.",
         "base_url": "https://api.groq.com/openai/v1",
         "api_key_prefix": "gsk_",
         "get_url": "https://console.groq.com/keys",
-        "categories": ["free"],
-        
+        "tier": "free",
+
         "models": {
-            # Llama 4 - Melhor para código na Groq
-            "llama-4-scout-17b-16e": {
+            # --- RECOMENDADOS PARA CÓDIGO ---
+            "meta-llama/llama-4-scout-17b-16e-instruct": {
                 "name": "Llama 4 Scout 17B",
-                "params": "17B×16 Experts (MoE)",
+                "params": "17B×16E MoE",
                 "context": "128K",
-                "best_for": "🏆 CÓDIGO - Multimodal, Rápido",
+                "best_for": "🏆 CÓDIGO — Multimodal, Ultra-rápido",
                 "speed": "~460 tok/s",
                 "tier": "free",
                 "recommended": True,
                 "top_pick": True
             },
-            "llama-4-maverick-17b-128e": {
-                "name": "Llama 4 Maverick 17B",
-                "params": "17B×128 Experts",
+            "openai/gpt-oss-120b": {
+                "name": "GPT-OSS 120B",
+                "params": "120B MoE",
                 "context": "128K",
-                "best_for": "Tarefas complexas, Reasoning",
-                "speed": "~300 tok/s",
+                "best_for": "🧠 REASONING — Substitui Maverick",
+                "speed": "~200 tok/s",
                 "tier": "free",
                 "recommended": True
+            },
+            "openai/gpt-oss-20b": {
+                "name": "GPT-OSS 20B",
+                "params": "20B",
+                "context": "128K",
+                "best_for": "Rápido, código e chat",
+                "speed": "~400 tok/s",
+                "tier": "free"
+            },
+            "qwen/qwen3-32b": {
+                "name": "Qwen3 32B",
+                "params": "32B",
+                "context": "128K",
+                "best_for": "Código, raciocínio",
+                "speed": "~150 tok/s",
+                "tier": "free"
+            },
+            "moonshotai/kimi-k2-instruct": {
+                "name": "Kimi K2",
+                "params": "MoE",
+                "context": "128K",
+                "best_for": "Código, agentes",
+                "speed": "~200 tok/s",
+                "tier": "free"
             },
             "llama-3.3-70b-versatile": {
                 "name": "Llama 3.3 70B",
                 "params": "70B",
                 "context": "128K",
-                "best_for": "Chat geral, Versátil",
+                "best_for": "Chat geral, versátil",
                 "speed": "~100 tok/s",
                 "tier": "free"
             },
@@ -62,338 +102,306 @@ PROVIDERS = {
                 "best_for": "Reasoning profundo, Matemática",
                 "speed": "~80 tok/s",
                 "tier": "free"
-            }
+            },
+            # --- DESCONTINUADOS (não usar) ---
+            # "llama-4-maverick-17b-128e" → DEPRECADO fev/2026, use gpt-oss-120b
         }
     },
-    
+
     # =========================================================================
-    # OPENROUTER - Vários modelos FREE
+    # OPENROUTER — 27 modelos free (sufixo :free), zero custo
+    # Rate limits: 20 req/min, 200 req/dia (grátis) | 1000/dia com $10 de crédito
     # =========================================================================
     "openrouter": {
         "name": "OpenRouter",
-        "description": "Gateway para múltiplos provedores. Vários modelos FREE.",
+        "description": "27 modelos FREE. Use sufixo :free. 200 req/dia grátis.",
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key_prefix": "sk-or_",
+        "api_key_prefix": "sk-or",
         "get_url": "https://openrouter.ai/keys",
-        "categories": ["free", "low_cost"],
-        
+        "tier": "free",
+
         "models": {
-            # MELHOR MODELO GRÁTIS PARA CÓDIGO
+            # --- TOP CÓDIGO FREE ---
             "qwen/qwen3-coder:free": {
                 "name": "Qwen3 Coder 480B",
-                "params": "480B total (35B active)",
+                "params": "480B MoE (35B ativos)",
                 "context": "262K",
-                "best_for": "CÓDIGO AVANÇADO - TOP!",
+                "best_for": "🏆 MELHOR CÓDIGO FREE — Agentes, tool use",
+                "speed": "~80 tok/s",
                 "tier": "free",
                 "recommended": True,
                 "top_pick": True
             },
-            "deepseek/deepseek-chat-v3-0324:free": {
-                "name": "DeepSeek V3 Chat",
-                "params": "685B MoE",
-                "context": "128K",
-                "best_for": "Chat geral, Análise",
+            "nvidia/nemotron-3-super-120b-a12b:free": {
+                "name": "Nemotron 3 Super 120B",
+                "params": "120B MoE (12B ativos)",
+                "context": "1M",
+                "best_for": "⭐ Agentes complexos, 1M context",
+                "speed": "~150 tok/s",
                 "tier": "free",
                 "recommended": True
+            },
+            "nvidia/nemotron-3-nano-30b-a3b:free": {
+                "name": "Nemotron 3 Nano 30B",
+                "params": "30B MoE (3B ativos)",
+                "context": "256K",
+                "best_for": "Agentes leves, eficiente",
+                "speed": "~300 tok/s",
+                "tier": "free"
+            },
+            "nvidia/nemotron-nano-12b-v2-vl:free": {
+                "name": "Nemotron Nano 12B VL",
+                "params": "12B",
+                "context": "256K",
+                "best_for": "Visão + texto, documentos",
+                "speed": "~200 tok/s",
+                "tier": "free"
+            },
+            "openai/gpt-oss-120b:free": {
+                "name": "GPT-OSS 120B",
+                "params": "120B MoE",
+                "context": "128K",
+                "best_for": "Reasoning, código",
+                "speed": "~150 tok/s",
+                "tier": "free"
+            },
+            "deepseek/deepseek-chat-v3-0324:free": {
+                "name": "DeepSeek V3 Chat",
+                "params": "671B MoE",
+                "context": "128K",
+                "best_for": "Chat geral, código",
+                "speed": "~60 tok/s",
+                "tier": "free"
             },
             "deepseek/deepseek-r1:free": {
                 "name": "DeepSeek R1",
                 "params": "671B MoE",
                 "context": "128K",
                 "best_for": "Reasoning profundo",
-                "tier": "free",
-                "recommended": True
+                "speed": "~40 tok/s",
+                "tier": "free"
+            },
+            "meta-llama/llama-4-maverick:free": {
+                "name": "Llama 4 Maverick",
+                "params": "17B×128E",
+                "context": "128K",
+                "best_for": "Chat, reasoning",
+                "speed": "~100 tok/s",
+                "tier": "free"
+            },
+            "meta-llama/llama-3.3-70b-instruct:free": {
+                "name": "Llama 3.3 70B",
+                "params": "70B",
+                "context": "128K",
+                "best_for": "Chat geral, versátil",
+                "speed": "~80 tok/s",
+                "tier": "free"
             },
             "google/gemini-2.0-flash-exp:free": {
                 "name": "Gemini 2.0 Flash",
-                "params": "Flash",
+                "params": "N/A",
                 "context": "1M",
-                "best_for": "Contexto longo",
+                "best_for": "1M context, multimodal",
+                "speed": "~200 tok/s",
                 "tier": "free"
             },
-            # Low-cost
-            "deepseek/deepseek-chat": {
-                "name": "DeepSeek V3 (paid)",
-                "params": "685B MoE",
+            "stepfun/step-3.5-flash:free": {
+                "name": "Step 3.5 Flash",
+                "params": "196B MoE (11B ativos)",
+                "context": "256K",
+                "best_for": "Rápido, geral",
+                "speed": "~250 tok/s",
+                "tier": "free"
+            },
+            "qwen/qwen3-next-80b-a3b-instruct:free": {
+                "name": "Qwen3 Next 80B",
+                "params": "80B MoE (3B ativos)",
+                "context": "262K",
+                "best_for": "Código, raciocínio, agentic",
+                "speed": "~200 tok/s",
+                "tier": "free"
+            },
+            "z-ai/glm-4.5-air:free": {
+                "name": "GLM 4.5 Air",
+                "params": "N/A",
                 "context": "128K",
-                "best_for": "Melhor qualidade",
-                "tier": "low_cost",
-                "price": "$0.27/$1.10 per 1M"
-            }
+                "best_for": "Agentes, chat",
+                "speed": "~150 tok/s",
+                "tier": "free"
+            },
+            # Router automático — seleciona o melhor free disponível
+            "openrouter/free": {
+                "name": "Auto-Router FREE",
+                "params": "Varia",
+                "context": "200K",
+                "best_for": "Seleção automática do melhor free",
+                "speed": "Varia",
+                "tier": "free",
+                "is_router": True
+            },
         }
     },
-    
+
     # =========================================================================
-    # NVIDIA NIM - GRATUITO (Rate Limited)
+    # NVIDIA NIM — Free tier via build.nvidia.com
+    # Rate limited mas gratuito para desenvolvimento
     # =========================================================================
     "nvidia": {
         "name": "NVIDIA NIM",
-        "description": "API gratuita com rate limits. 189+ modelos. Ótimo para código.",
+        "description": "Modelos NVIDIA. Free tier para desenvolvimento via build.nvidia.com.",
         "base_url": "https://integrate.api.nvidia.com/v1",
         "api_key_prefix": "nvapi-",
-        "get_url": "https://build.nvidia.com/",
-        "categories": ["free"],
-        
+        "get_url": "https://build.nvidia.com/explore/discover",
+        "tier": "free",
+
         "models": {
-            # KIMI K2 - TOP PARA CÓDIGO
-            "moonshotai/kimi-k2-instruct": {
-                "name": "Kimi K2",
-                "params": "MoE Large (1T params)",
-                "context": "128K",
-                "best_for": "🏆 CÓDIGO - Excelente raciocínio!",
+            "nvidia/nemotron-3-super-120b-a12b": {
+                "name": "Nemotron 3 Super 120B",
+                "params": "120B MoE (12B ativos)",
+                "context": "1M",
+                "best_for": "⭐ Agentes, multi-step, 1M context",
+                "speed": "~150 tok/s",
                 "tier": "free",
                 "recommended": True,
                 "top_pick": True
             },
-            # KIMI K2.5 - Versão mais recente
-            "moonshotai/kimi-k2.5-instruct": {
-                "name": "Kimi K2.5",
-                "params": "MoE Large (atualizado)",
-                "context": "128K",
-                "best_for": "🏆 CÓDIGO - Versão melhorada",
-                "tier": "free",
-                "recommended": True,
-                "top_pick": True
-            },
-            # MINIMAX M2.5 - Excelente para código
-            "minimaxai/minimax-m2.5-250106": {
-                "name": "MiniMax M2.5 230B",
-                "params": "230B",
-                "context": "128K",
-                "best_for": "CÓDIGO, Reasoning avançado",
+            "nvidia/nemotron-3-nano-30b-a3b": {
+                "name": "Nemotron 3 Nano 30B",
+                "params": "30B MoE (3B ativos)",
+                "context": "256K",
+                "best_for": "Agentes leves, eficiente",
+                "speed": "~300 tok/s",
                 "tier": "free",
                 "recommended": True
             },
-            "nvidia/nemotron-4-340b-instruct": {
-                "name": "Nemotron 4 340B",
-                "params": "340B",
-                "context": "4K",
-                "best_for": "Chat geral, Síntese",
+            "nvidia/nemotron-nano-12b-v2-vl": {
+                "name": "Nemotron Nano 12B VL",
+                "params": "12B",
+                "context": "256K",
+                "best_for": "Visão + texto",
+                "speed": "~200 tok/s",
+                "tier": "free"
+            },
+            "moonshotai/kimi-k2-instruct": {
+                "name": "Kimi K2",
+                "params": "MoE",
+                "context": "128K",
+                "best_for": "Código, agentes",
+                "speed": "~200 tok/s",
                 "tier": "free"
             },
             "meta/llama-3.1-405b-instruct": {
                 "name": "Llama 3.1 405B",
                 "params": "405B",
                 "context": "128K",
-                "best_for": "Máxima qualidade geral",
-                "tier": "free",
-                "recommended": True
-            },
-            "meta/llama-3.3-70b-instruct": {
-                "name": "Llama 3.3 70B",
-                "params": "70B",
-                "context": "128K",
-                "best_for": "Equilibrado e eficiente",
+                "best_for": "Qualidade máxima, raciocínio",
+                "speed": "~50 tok/s",
                 "tier": "free"
             },
-            "deepseek-ai/deepseek-r1": {
-                "name": "DeepSeek R1",
-                "params": "671B MoE",
-                "context": "128K",
-                "best_for": "Reasoning profundo, Matemática",
-                "tier": "free",
-                "recommended": True
-            },
-            "qwen/qwen3-235b-a22b-instruct": {
-                "name": "Qwen3 235B",
-                "params": "235B (22B active)",
-                "context": "128K",
-                "best_for": "Código, Multimodal",
-                "tier": "free",
-                "recommended": True
-            }
         }
     },
-    
+
     # =========================================================================
-    # Z.AI - GRATUITO LIMITADO
+    # Z.AI — Free limitado
     # =========================================================================
     "zai": {
         "name": "Z.AI (GLM)",
-        "description": "GLM models. Plano gratuito limitado.",
+        "description": "Modelos GLM. Free limitado. Excelente para código.",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
-        "api_key_prefix": "",
+        "api_key_prefix": "glm-",
         "get_url": "https://z.ai/",
-        "categories": ["free_limited"],
-        
+        "tier": "free",
+
         "models": {
             "glm-4.5-air": {
                 "name": "GLM 4.5 Air",
-                "params": "MoE Compact",
+                "params": "N/A",
                 "context": "128K",
-                "best_for": "Código, Agentes",
-                "tier": "free_limited",
+                "best_for": "Código, agentes",
+                "speed": "~150 tok/s",
+                "tier": "free",
                 "recommended": True
             },
-            "glm-4.5": {
-                "name": "GLM 4.5",
-                "params": "MoE Large",
-                "context": "128K",
-                "best_for": "Código avançado",
-                "tier": "paid",
-                "price": "$2.20/$0.45 per 1M"
-            }
         }
-    }
+    },
 }
 
 # =============================================================================
-# RECOMENDAÇÕES POR CASO DE USO
+# MELHORES MODELOS FREE POR CATEGORIA (para seleção automática)
 # =============================================================================
 
-RECOMMENDATIONS = {
-    "coding": {
-        "title": "Programação e Código",
-        "free": [
-            ("qwen/qwen3-coder:free", "OpenRouter", "🏆 MELHOR para código - 480B"),
-            ("moonshotai/kimi-k2.5-instruct", "NVIDIA", "⭐ Kimi K2.5 - Versão melhorada"),
-            ("moonshotai/kimi-k2-instruct", "NVIDIA", "⭐ Kimi K2 - Excelente código"),
-            ("llama-4-scout-17b-16e", "Groq", "⚡ Ultra-rápido (~460 tok/s)"),
-            ("minimaxai/minimax-m2.5-250106", "NVIDIA", "⭐ MiniMax M2.5 - 230B código"),
-        ]
-    },
-    "reasoning": {
-        "title": "Reasoning e Matemática",
-        "free": [
-            ("deepseek-ai/deepseek-r1", "NVIDIA", "DeepSeek R1 - NVIDIA API"),
-            ("deepseek/deepseek-r1:free", "OpenRouter", "DeepSeek R1 - OpenRouter"),
-            ("deepseek-r1-distill-llama-70b", "Groq", "R1 rápido na Groq"),
-        ]
-    },
-    "general": {
-        "title": "Chat Geral",
-        "free": [
-            ("deepseek/deepseek-chat-v3-0324:free", "OpenRouter", "Excelente geral - 685B"),
-            ("llama-3.3-70b-versatile", "Groq", "Rápido e versátil"),
-            ("meta/llama-3.3-70b-instruct", "NVIDIA", "Llama 3.3 via NVIDIA"),
-        ]
-    },
-    "speed": {
-        "title": "Velocidade Máxima",
-        "free": [
-            ("llama-4-scout-17b-16e", "Groq", "~460 tok/s - TOP velocidade"),
-            ("llama-4-maverick-17b-128e", "Groq", "~300 tok/s"),
-        ]
-    }
-}
+BEST_FREE_FOR_CODE = [
+    ("openrouter", "qwen/qwen3-coder:free"),
+    ("groq", "meta-llama/llama-4-scout-17b-16e-instruct"),
+    ("openrouter", "nvidia/nemotron-3-super-120b-a12b:free"),
+    ("groq", "openai/gpt-oss-120b"),
+    ("openrouter", "deepseek/deepseek-chat-v3-0324:free"),
+]
 
-# =============================================================================
-# MAPEAMENTO PARA O PROXY
-# =============================================================================
+BEST_FREE_FOR_REASONING = [
+    ("groq", "openai/gpt-oss-120b"),
+    ("openrouter", "deepseek/deepseek-r1:free"),
+    ("groq", "deepseek-r1-distill-llama-70b"),
+    ("openrouter", "openai/gpt-oss-120b:free"),
+]
 
-PROXY_MODELS = {
-    "groq": [
-        "llama-4-scout-17b-16e",
-        "llama-4-maverick-17b-128e", 
-        "llama-3.3-70b-versatile",
-        "deepseek-r1-distill-llama-70b"
-    ],
-    "openrouter": [
-        "qwen/qwen3-coder:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "deepseek/deepseek-r1:free",
-        "google/gemini-2.0-flash-exp:free"
-    ],
-    "nvidia": [
-        "moonshotai/kimi-k2-instruct",
-        "moonshotai/kimi-k2.5-instruct",
-        "minimaxai/minimax-m2.5-250106",
-        "meta/llama-3.1-405b-instruct",
-        "meta/llama-3.3-70b-instruct",
-        "deepseek-ai/deepseek-r1",
-        "qwen/qwen3-235b-a22b-instruct"
-    ],
-    "zai": [
-        "glm-4.5-air",
-        "glm-4.5"
-    ]
-}
+BEST_FREE_GENERAL = [
+    ("groq", "llama-3.3-70b-versatile"),
+    ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
+    ("openrouter", "google/gemini-2.0-flash-exp:free"),
+]
 
-# Headers por provedor
-PROVIDER_HEADERS = {
-    "groq": lambda key: {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json"
-    },
-    "openrouter": lambda key: {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://claude-free.local",
-        "X-Title": "Claude Free Proxy"
-    },
-    "nvidia": lambda key: {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json"
-    },
-    "zai": lambda key: {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json"
-    }
-}
+# Modelo padrão recomendado
+DEFAULT_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+DEFAULT_PROVIDER = "groq"
 
 
-# =============================================================================
-# UTILITÁRIOS
-# =============================================================================
-
-def get_model_info(model_id: str, provider: str = None) -> dict:
-    """Retorna informações do modelo"""
-    providers_to_search = [provider] if provider else PROVIDERS.keys()
-    
-    for prov in providers_to_search:
-        if prov in PROVIDERS:
-            models = PROVIDERS[prov].get("models", {})
-            if model_id in models:
-                model_info = models[model_id].copy()
-                model_info["provider"] = prov
-                model_info["provider_name"] = PROVIDERS[prov]["name"]
-                model_info["model_id"] = model_id
-                return model_info
-    
-    return None
+def get_tier_color(tier):
+    """Retorna código de cor ANSI para o tier."""
+    return {
+        "free": COLOR_FREE,
+        "low_cost": COLOR_LOW_COST,
+        "paid": COLOR_PAID,
+    }.get(tier, COLOR_RESET)
 
 
-def get_free_models() -> dict:
-    """Retorna todos os modelos gratuitos"""
-    free = {}
+def get_tier_badge(tier):
+    """Retorna badge visual para o tier."""
+    return TIER_BADGE.get(tier, tier)
+
+
+def list_free_models():
+    """Lista todos os modelos gratuitos disponíveis."""
+    result = []
     for provider_id, provider in PROVIDERS.items():
-        free[provider_id] = {
-            "name": provider["name"],
-            "description": provider["description"],
-            "get_url": provider["get_url"],
-            "models": {}
-        }
-        for model_id, model in provider.get("models", {}).items():
-            if model.get("tier") in ["free", "free_limited"]:
-                free[provider_id]["models"][model_id] = model
-    
-    return {k: v for k, v in free.items() if v["models"]}
-
-
-def print_model_table():
-    """Imprime tabela de modelos"""
-    free = get_free_models()
-    
-    print("\n" + "="*70)
-    print("MODELOS GRATUITOS PARA CÓDIGO - 2025")
-    print("="*70)
-    
-    for provider_id, provider in free.items():
-        print(f"\n{'─'*70}")
-        print(f"📦 {provider['name']}")
-        print(f"   {provider['description']}")
-        print(f"   🔑 {provider['get_url']}")
-        print(f"{'─'*70}")
-        
         for model_id, model in provider["models"].items():
-            rec = "⭐ " if model.get("recommended") else "   "
-            top = "🏆 " if model.get("top_pick") else ""
-            print(f"{rec}{top}{model['name']}")
-            print(f"      ID: {model_id}")
-            print(f"      {model['params']} | Context: {model['context']}")
-            print(f"      Best: {model['best_for']}")
-            print()
+            if model.get("tier") == "free":
+                result.append({
+                    "provider": provider_id,
+                    "model_id": model_id,
+                    "name": model["name"],
+                    "best_for": model.get("best_for", ""),
+                    "context": model.get("context", ""),
+                    "top_pick": model.get("top_pick", False),
+                })
+    return result
 
 
 if __name__ == "__main__":
-    print_model_table()
+    print(f"\n{COLOR_FREE}{'='*60}")
+    print("  MODELOS FREE DISPONÍVEIS — Março 2026")
+    print(f"{'='*60}{COLOR_RESET}\n")
+
+    for provider_id, provider in PROVIDERS.items():
+        print(f"\n📦 {provider['name']} — {provider['description']}")
+        print(f"   Chave: {provider['get_url']}\n")
+
+        for model_id, model in provider["models"].items():
+            tier = model.get("tier", "paid")
+            color = get_tier_color(tier)
+            badge = get_tier_badge(tier)
+            pick = " ⭐ TOP PICK" if model.get("top_pick") else ""
+            print(f"  {color}{badge}{COLOR_RESET}{pick}")
+            print(f"    ID: {model_id}")
+            print(f"    {model['name']} | {model.get('context','?')} ctx | {model.get('best_for','')}")
+            print()
