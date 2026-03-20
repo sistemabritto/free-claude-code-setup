@@ -451,14 +451,27 @@ configure_master_key() {
 }
 
 install_antigravity() {
-    # Antigravity é opcional — link para instalação manual
-    if whiptail --title "Antigravity (IDE Visual)" \
-        --yesno "\nDeseja ver instruções para instalar o Antigravity?\n\nO Antigravity é um IDE gratuito para usar com o proxy.\nVocê pode instalar depois se quiser." 14 60; then
-
-        whiptail --title "Antigravity" \
-            --msgbox "\nPara instalar o Antigravity:\n\n  https://antigravity.dev\n\nApós instalar, configure:\n  ANTHROPIC_BASE_URL=http://localhost:8323\n\nO proxy já está rodando nessa porta!" 15 60
+    if whiptail --title "Instalar Antigravity IDE" \
+        --yesno "\nDeseja instalar o Antigravity IDE (Google)?\n\nIDE gratuito com agentes de IA.\nRequer login com conta Google.\n\n(Recomendado)" 14 60; then
+        
+        log_info "Adicionando repositório do Antigravity..."
+        
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg | \
+            sudo gpg --dearmor -o /etc/apt/keyrings/antigravity-repo-key.gpg
+        
+        echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main" | \
+            sudo tee /etc/apt/sources.list.d/antigravity.list > /dev/null
+        
+        log_info "Instalando Antigravity..."
+        sudo apt-get update -qq
+        sudo apt-get install -y antigravity
+        
+        log_success "Antigravity instalado! Abra pelo menu de aplicativos."
+        log_info "  Configure: ANTHROPIC_BASE_URL=http://localhost:${PROXY_PORT}"
+    else
+        log_info "Antigravity: instale quando quiser em https://antigravity.google/download/linux"
     fi
-    log_info "Antigravity: instale quando quiser em https://antigravity.dev"
 }
 
 # =============================================================================
@@ -582,13 +595,25 @@ configure_claude_proxy() {
     
     mkdir -p "${HOME}/.claude"
     
-    # Variável de ambiente no bashrc
     local bashrc="${HOME}/.bashrc"
+    
+    # Fix PATH para ~/.local/bin (onde o Claude Code é instalado)
+    if ! grep -q 'HOME/.local/bin' "$bashrc" 2>/dev/null; then
+        echo "" >> "$bashrc"
+        echo "# Claude Code - PATH" >> "$bashrc"
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$bashrc"
+    fi
+    
+    # Proxy local
     if ! grep -q "ANTHROPIC_BASE_URL" "$bashrc" 2>/dev/null; then
         echo "" >> "$bashrc"
         echo "# Claude Free - Proxy local" >> "$bashrc"
         echo "export ANTHROPIC_BASE_URL=http://localhost:${PROXY_PORT}" >> "$bashrc"
     fi
+    
+    # Aplicar imediatamente na sessão atual
+    export PATH="$HOME/.local/bin:$PATH"
+    export ANTHROPIC_BASE_URL="http://localhost:${PROXY_PORT}"
     
     log_success "Claude Code configurado para usar proxy na porta ${PROXY_PORT}!"
 }
@@ -599,6 +624,19 @@ configure_claude_proxy() {
 # =============================================================================
 
 show_summary() {
+    # Iniciar proxy antes do resumo
+    log_info "Iniciando proxy..."
+    pkill -f proxy_core.py 2>/dev/null || true
+    sleep 1
+    nohup python3 "${INSTALL_DIR}/proxy/proxy_core.py" > "${INSTALL_DIR}/logs/proxy.log" 2>&1 &
+    sleep 3
+    
+    if curl -s "http://localhost:${PROXY_PORT}/health" > /dev/null 2>&1; then
+        log_success "Proxy rodando em http://localhost:${PROXY_PORT}"
+    else
+        log_warning "Proxy pode demorar alguns segundos. Use: cc-start"
+    fi
+    
     local configured_providers=()
     local active_provider=$(grep "^ACTIVE_PROVIDER=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2)
     local active_model=$(grep "^ACTIVE_MODEL=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2)
@@ -677,8 +715,31 @@ main() {
     configure_claude_proxy
     show_summary
     
-    log_success "Instalação concluída!"
-    echo -e "${CYAN}Reinicie o terminal e execute 'cc-config' para gerenciar.${NC}"
+    log_success "Instalacao concluida!"
+    echo ""
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  ✅ TUDO PRONTO!${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "  Proxy: ${CYAN}http://localhost:${PROXY_PORT}${NC}"
+    echo -e "  Modelo: ${CYAN}${active_model}${NC}"
+    echo ""
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    
+    # Aplicar PATH e iniciar Claude Code direto
+    export PATH="$HOME/.local/bin:$PATH"
+    export ANTHROPIC_BASE_URL="http://localhost:${PROXY_PORT}"
+    
+    echo ""
+    echo -e "${GREEN}  Abrindo Claude Code...${NC}"
+    echo ""
+    
+    if command -v claude &>/dev/null; then
+        exec claude
+    else
+        echo -e "${YELLOW}  Claude instalado em: ~/.local/bin/claude${NC}"
+        echo -e "${YELLOW}  Rode: source ~/.bashrc && claude${NC}"
+    fi
 }
 
 main "$@"
