@@ -334,12 +334,36 @@ class HotReloadWorker(threading.Thread):
 # TRADUÇÃO DE FORMATOS
 # =============================================================================
 
+# Limite máximo de tokens por modelo (evita erro 400)
+MAX_OUTPUT_TOKENS = {
+    "meta-llama/llama-4-scout-17b-16e-instruct": 8192,
+    "meta-llama/llama-4-scout-17b-16e": 8192,
+    "llama-4-scout-17b-16e": 8192,
+    "openai/gpt-oss-120b": 32768,
+    "openai/gpt-oss-20b": 32768,
+    "moonshotai/kimi-k2-instruct": 16384,
+    "qwen/qwen3-32b": 32768,
+    "llama-3.3-70b-versatile": 32768,
+    "deepseek-r1-distill-llama-70b": 16384,
+    # OpenRouter — sem limitação problemática
+    "qwen/qwen3-coder:free": 32768,
+    "nvidia/nemotron-3-super-120b-a12b:free": 32768,
+    "deepseek/deepseek-r1:free": 32768,
+    "deepseek/deepseek-chat-v3-0324:free": 32768,
+    "google/gemini-2.0-flash-exp:free": 32768,
+    "openrouter/free": 32768,
+}
+
 def translate_anthropic_to_openai(anthropic_request: Dict) -> Dict:
+    model_max = MAX_OUTPUT_TOKENS.get(config.active_model, 32768)
+    requested_tokens = anthropic_request.get("max_tokens", 4096)
+    safe_tokens = min(requested_tokens, model_max)
+    
     openai_request = {
         "model": config.active_model,
         "messages": [],
         "temperature": anthropic_request.get("temperature", 1.0),
-        "max_tokens": anthropic_request.get("max_tokens", 4096),
+        "max_tokens": safe_tokens,
         "stream": anthropic_request.get("stream", False),
         "top_p": anthropic_request.get("top_p"),
         "top_k": anthropic_request.get("top_k"),

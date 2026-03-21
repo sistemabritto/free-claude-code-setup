@@ -181,10 +181,10 @@ create_env_file() {
 # =============================================================================
 
 # Provedor ativo: groq, openrouter, nvidia, zai
-ACTIVE_PROVIDER=groq
+ACTIVE_PROVIDER=openrouter
 
 # Modelo ativo (recomendado para código: llama-4-scout-17b-16e)
-ACTIVE_MODEL=llama-4-scout-17b-16e
+ACTIVE_MODEL=qwen/qwen3-coder:free
 
 # API Keys (configure conforme necessário)
 GROQ_API_KEY=
