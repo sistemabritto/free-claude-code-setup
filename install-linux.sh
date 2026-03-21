@@ -520,18 +520,19 @@ create_aliases() {
 # Claude Free - Comandos
 alias cc-config='python3 ${INSTALL_DIR}/proxy/config_manager.py'
 cc-start() {
-    if curl -s http://localhost:8323/health > /dev/null 2>&1; then
-        echo '✅ Proxy já está rodando em http://localhost:8323'
-        return 0
-    fi
-    pkill -f proxy_core.py 2>/dev/null || true
+    # Matar qualquer processo na porta 8323
+    pkill -9 -f proxy_core.py 2>/dev/null || true
+    local pid=$(lsof -ti:8323 2>/dev/null)
+    [ -n "$pid" ] && kill -9 $pid 2>/dev/null || true
     sleep 1
+    
     nohup python3 ${INSTALL_DIR}/proxy/proxy_core.py > ${INSTALL_DIR}/logs/proxy.log 2>&1 &
     sleep 2
+    
     if curl -s http://localhost:8323/health > /dev/null 2>&1; then
-        echo '✅ Proxy rodando em http://localhost:8323'
+        echo "✅ Proxy rodando em http://localhost:8323"
     else
-        echo '⚠️  Erro ao iniciar proxy. Veja os logs: cc-logs'
+        echo "⚠️  Erro ao iniciar. Logs: cc-logs"
     fi
 }
 alias cc-status='curl -s http://localhost:8323/health | python3 -m json.tool'
