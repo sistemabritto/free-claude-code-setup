@@ -341,6 +341,7 @@ MAX_OUTPUT_TOKENS = {
     "llama-4-scout-17b-16e": 8192,
     "openai/gpt-oss-120b": 32768,
     "openai/gpt-oss-20b": 32768,
+    "moonshotai/kimi-k2.5": 8192,
     "moonshotai/kimi-k2-instruct": 16384,
     "qwen/qwen3-32b": 32768,
     "llama-3.3-70b-versatile": 32768,

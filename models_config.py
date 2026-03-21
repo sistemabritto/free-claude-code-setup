@@ -43,7 +43,7 @@ PROVIDERS = {
                 "params": "480B MoE (35B ativos)",
                 "context": "262K",
                 "max_output": 32768,
-                "best_for": "🏆 MELHOR CÓDIGO FREE — 262K ctx, agentes, tool use",
+                "best_for": "🏆 MELHOR CÓDIGO FREE — 262K ctx | ⚠️ rate limit upstream",
                 "speed": "~80 tok/s",
                 "tier": "free",
                 "recommended": True,
@@ -91,7 +91,7 @@ PROVIDERS = {
                 "params": "671B MoE",
                 "context": "128K",
                 "max_output": 32768,
-                "best_for": "🧠 Reasoning profundo, matemática",
+                "best_for": "🧠 Reasoning profundo | ⚠️ instável upstream",
                 "speed": "~40 tok/s",
                 "tier": "free"
             },
@@ -170,6 +170,17 @@ PROVIDERS = {
                 "best_for": "Rápido, código e chat",
                 "speed": "~400 tok/s",
                 "tier": "free"
+            },
+            "moonshotai/kimi-k2.5": {
+                "name": "Kimi K2.5",
+                "params": "1T MoE (multimodal)",
+                "context": "256K",
+                "max_output": 8192,
+                "best_for": "⭐ Visão + código + agentes — 256K ctx",
+                "speed": "~100 tok/s",
+                "tier": "free",
+                "recommended": True,
+                "top_pick": True
             },
             "moonshotai/kimi-k2-instruct": {
                 "name": "Kimi K2",
@@ -253,6 +264,17 @@ PROVIDERS = {
                 "best_for": "Visão + texto, documentos",
                 "speed": "~200 tok/s",
                 "tier": "free"
+            },
+            "moonshotai/kimi-k2.5": {
+                "name": "Kimi K2.5",
+                "params": "1T MoE (multimodal)",
+                "context": "256K",
+                "max_output": 8192,
+                "best_for": "⭐ Visão + código + agentes — 256K ctx",
+                "speed": "~100 tok/s",
+                "tier": "free",
+                "recommended": True,
+                "top_pick": True
             },
             "moonshotai/kimi-k2-instruct": {
                 "name": "Kimi K2",
